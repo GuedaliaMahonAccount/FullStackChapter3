@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📇 ContactHub — Contact Manager</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- ============================================================
+         PAGE 1: LOGIN VIEW
+         ============================================================ -->
+    <div id="page-login" class="page auth-page">
+        <div class="auth-card">
+            <h1>📇 ContactHub</h1>
+            <p class="subtitle">Sign in to manage your contacts</p>
+
+            <div id="login-message" class="message"></div>
+
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="login-username">Username</label>
+                    <input type="text" id="login-username" placeholder="e.g. david123" required minlength="3">
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" placeholder="Your password" required minlength="4">
+                </div>
+                <button type="submit" id="login-btn" class="btn btn-primary">Sign In</button>
+            </form>
+
+            <div class="auth-link">
+                Don't have an account? <a href="#" id="go-to-register">Register here</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         PAGE 2: REGISTER VIEW
+         ============================================================ -->
+    <div id="page-register" class="page auth-page">
+        <div class="auth-card">
+            <h1>📝 Create Account</h1>
+            <p class="subtitle">Register to get started</p>
+
+            <div id="reg-message" class="message"></div>
+
+            <form id="register-form">
+                <div class="form-group">
+                    <label for="reg-fullname">Full Name</label>
+                    <input type="text" id="reg-fullname" placeholder="e.g. David Cohen" required>
+                </div>
+                <div class="form-group">
+                    <label for="reg-email">Email</label>
+                    <input type="email" id="reg-email" placeholder="e.g. david@email.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="reg-username">Username</label>
+                    <input type="text" id="reg-username" placeholder="At least 3 characters" required minlength="3">
+                </div>
+                <div class="form-group">
+                    <label for="reg-password">Password</label>
+                    <input type="password" id="reg-password" placeholder="At least 4 characters" required minlength="4">
+                </div>
+                <button type="submit" id="reg-btn" class="btn btn-primary">Create Account</button>
+            </form>
+
+            <div class="auth-link">
+                Already have an account? <a href="#" id="go-to-login">Sign in</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         PAGE 3: CONTACTS DASHBOARD (Main Application)
+         ============================================================ -->
+    <div id="page-app" class="page app-page">
+
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-left">
+                <h1>📇 ContactHub</h1>
+                <span class="user-badge" id="user-display-name"></span>
+            </div>
+            <div class="header-right">
+                <button id="btn-logout" class="btn-logout">🚪 Sign Out</button>
+            </div>
+        </header>
+
+        <!-- Toolbar: Search + Add Contact -->
+        <div class="app-toolbar">
+            <div class="search-box">
+                <span>🔍</span>
+                <input type="text" id="search-input" placeholder="Search contacts...">
+            </div>
+            <button id="btn-add-contact" class="btn-add">+ Add Contact</button>
+        </div>
+
+        <!-- Status Bar -->
+        <div id="app-status" class="app-status"></div>
+
+        <!-- Main Container -->
+        <div class="contacts-container">
+
+            <!-- Add / Edit Form (hidden by default) -->
+            <div id="contact-form-section" class="form-section hidden">
+                <h3 id="form-title">➕ New Contact</h3>
+                <form id="contact-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="cf-firstname">First Name *</label>
+                            <input type="text" id="cf-firstname" placeholder="First name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="cf-lastname">Last Name *</label>
+                            <input type="text" id="cf-lastname" placeholder="Last name" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="cf-phone">Phone</label>
+                            <input type="tel" id="cf-phone" placeholder="e.g. 050-1234567">
+                        </div>
+                        <div class="form-group">
+                            <label for="cf-email">Email</label>
+                            <input type="email" id="cf-email" placeholder="e.g. contact@email.com">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="cf-notes">Notes</label>
+                        <textarea id="cf-notes" rows="2" placeholder="Notes..."></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary" style="width:auto">💾 Save</button>
+                        <button type="button" id="btn-cancel-form" class="btn btn-secondary">Cancel</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Contacts List -->
+            <div id="contacts-list"></div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         NETWORK MONITOR PANEL
+         Shows real-time network simulation stats and allows
+         the drop rate to be adjusted interactively.
+         ============================================================ -->
+    <div class="network-panel">
+        <span id="network-stats">📡 Network — Waiting...</span>
+        <div class="slider-group">
+            <label>Drop Rate:</label>
+            <input type="range" id="drop-rate-slider" min="10" max="50" value="15">
+            <span id="drop-rate-label">15%</span>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         SCRIPTS — Load order matters!
+         Each file is a separate, isolated module of the system.
+         ============================================================ -->
+
+    <!-- Layer 1: Databases (no dependencies) -->
+    <script src="js/auth-db.js"></script>
+    <script src="js/data-db.js"></script>
+
+    <!-- Layer 2: Servers (depend on the DB layer) -->
+    <script src="js/auth-server.js"></script>
+    <script src="js/data-server.js"></script>
+
+    <!-- Layer 3: Network (depends on servers for routing) -->
+    <script src="js/network.js"></script>
+
+    <!-- Layer 4: FAJAX communication layer (depends on Network) -->
+    <script src="js/fajax.js"></script>
+
+    <!-- Layer 5: SPA Router (no dependencies) -->
+    <script src="js/router.js"></script>
+
+    <!-- Layer 6: Client Application (depends on everything above) -->
+    <script src="js/app.js"></script>
+
+</body>
+</html>
