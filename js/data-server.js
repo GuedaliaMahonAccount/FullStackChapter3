@@ -1,30 +1,9 @@
-// ============================================================
-// DATA-SERVER.js — Contacts Data Server (Server Layer)
-// ============================================================
-// This logical server handles all CRUD operations on the Contacts resource.
-// Every request MUST include a valid Bearer token in the Authorization header.
-// The token is verified by calling AuthServer.validateToken() directly
-// (without going through the Network, to avoid infinite loops).
-//
-// REST Endpoints:
-//   GET    /api/contacts                  → Get all contacts for the logged-in user
-//   GET    /api/contacts/:id              → Get a specific contact
-//   POST   /api/contacts                  → Create a new contact
-//   PUT    /api/contacts/:id              → Update an existing contact
-//   DELETE /api/contacts/:id              → Delete a contact
-//   GET    /api/contacts/search?q=<text>  → Search contacts by name/phone/email
-//
-// IMPORTANT: This server only reads/writes data via DataDB. It never
-//            touches localStorage directly.
-// ============================================================
+// data-server.js — handles all CRUD operations on contacts
+// Every request must include a valid Bearer token in the Authorization header
 
 const DataServer = (function () {
 
-    // ----------------------------------------------------------
-    // Internal helpers (private)
-    // ----------------------------------------------------------
-
-    /** Parse a JSON request body (handles both string and object inputs) */
+    // Parse a JSON request body (handles both string and object inputs)
     function _parseBody(body) {
         if (!body) return null;
         if (typeof body === "object") return body;
@@ -32,7 +11,7 @@ const DataServer = (function () {
         catch (e) { return null; }
     }
 
-    /** Extract the Bearer token from the Authorization header */
+    // Extract the Bearer token from the Authorization header
     function _extractToken(headers) {
         if (!headers) return null;
         const auth = headers["Authorization"] || headers["authorization"];
@@ -40,7 +19,7 @@ const DataServer = (function () {
         return auth.startsWith("Bearer ") ? auth.substring(7) : auth;
     }
 
-    /** Build a standard HTTP-like response object */
+    // Build a standard HTTP-like response object
     function _response(status, statusText, body) {
         return {
             status: status,
@@ -49,16 +28,10 @@ const DataServer = (function () {
         };
     }
 
-    /**
-     * Parse a URL into its base path and optional resource ID.
-     * Examples:
-     *   "/api/contacts"          → { path: "/api/contacts", id: null }
-     *   "/api/contacts/c_123"    → { path: "/api/contacts", id: "c_123" }
-     *   "/api/contacts/search"   → { path: "/api/contacts/search", id: null }
-     */
+    // Parse URL into base path and optional resource ID
+    // e.g. "/api/contacts/c_123" → { path: "/api/contacts", id: "c_123" }
     function _parseUrl(url) {
         const parts = url.split("?")[0].split("/").filter(Boolean);
-        // parts could be: ["api", "contacts"] or ["api", "contacts", "c_123"]
         if (
             parts.length >= 3 &&
             parts[0] === "api" &&
@@ -70,15 +43,11 @@ const DataServer = (function () {
         return { path: "/" + parts.join("/"), id: null };
     }
 
-    /** Extract the ?q= query parameter from a URL string */
+    // Extract the ?q= query parameter from a URL string
     function _extractSearchQuery(url) {
         const match = url.match(/[?&]q=([^&]*)/);
         return match ? decodeURIComponent(match[1]) : "";
     }
-
-    // ----------------------------------------------------------
-    // Route handlers (private)
-    // ----------------------------------------------------------
 
     function _handleGetAll(userId) {
         const contacts = DataDB.getAllByUser(userId);
@@ -153,22 +122,13 @@ const DataServer = (function () {
         });
     }
 
-    // ----------------------------------------------------------
-    // PUBLIC — Entry point called by the Network module
-    // ----------------------------------------------------------
-
-    /**
-     * Route an incoming request to the correct handler.
-     * Step 1: Authenticate the request (validate Bearer token).
-     * Step 2: Parse the URL and dispatch to the right handler.
-     *
-     * @param {object} request - { method, url, headers, body }
-     * @returns {object} response - { status, statusText, body }
-     */
+    // Route an incoming request to the correct handler
+    // Step 1: Validate the Bearer token
+    // Step 2: Parse the URL and dispatch to the right handler
     function handleRequest(request) {
         console.log("[DataServer] Request received:", request.method, request.url);
 
-        // ── Step 1: Authentication ──────────────────────────────
+        // Step 1: Authentication
         const token = _extractToken(request.headers);
         const session = AuthServer.validateToken(token);
 
@@ -180,7 +140,7 @@ const DataServer = (function () {
             });
         }
 
-        // ── Step 2: Route the request ───────────────────────────
+        // Step 2: Route the request
         const userId = session.userId;
         const method = request.method.toUpperCase();
         const { path, id } = _parseUrl(request.url);

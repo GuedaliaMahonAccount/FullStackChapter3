@@ -11,9 +11,7 @@
 </head>
 <body>
 
-    <!-- ============================================================
-         PAGE 1: LOGIN VIEW
-         ============================================================ -->
+    <!-- Login page -->
     <div id="page-login" class="page auth-page">
         <div class="auth-card">
             <h1>📇 ContactHub</h1>
@@ -39,9 +37,7 @@
         </div>
     </div>
 
-    <!-- ============================================================
-         PAGE 2: REGISTER VIEW
-         ============================================================ -->
+    <!-- Register page -->
     <div id="page-register" class="page auth-page">
         <div class="auth-card">
             <h1>📝 Create Account</h1>
@@ -75,9 +71,7 @@
         </div>
     </div>
 
-    <!-- ============================================================
-         PAGE 3: CONTACTS DASHBOARD (Main Application)
-         ============================================================ -->
+    <!-- Main app page: contacts dashboard -->
     <div id="page-app" class="page app-page">
 
         <!-- Header -->
@@ -146,11 +140,7 @@
         </div>
     </div>
 
-    <!-- ============================================================
-         NETWORK MONITOR PANEL
-         Shows real-time network simulation stats and allows
-         the drop rate to be adjusted interactively.
-         ============================================================ -->
+    <!-- Network monitor panel: stats + drop rate slider -->
     <div class="network-panel">
         <span id="network-stats">📡 Network — Waiting...</span>
         <div class="slider-group">
@@ -160,10 +150,7 @@
         </div>
     </div>
 
-    <!-- ============================================================
-         SCRIPTS — Load order matters!
-         Each file is a separate, isolated module of the system.
-         ============================================================ -->
+    <!-- Scripts — load order matters (each layer depends on the one above) -->
 
     <!-- Layer 1: Databases (no dependencies) -->
     <script src="js/auth-db.js"></script>

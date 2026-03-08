@@ -1,25 +1,11 @@
-// ============================================================
-// AUTH-DB.js — Users Database (DB Layer)
-// ============================================================
-// This module manages the Users collection stored in localStorage.
-// IMPORTANT: This module must only be called by server-layer modules.
-//            The client layer must NEVER access the database directly.
-//
-// Public API:
-//   AuthDB.init()                          → Initialize the database
-//   AuthDB.findByUsername(username)        → Find a user by username
-//   AuthDB.addUser(userData)              → Register a new user
-//   AuthDB.validateCredentials(u, p)      → Check login credentials
-// ============================================================
+// auth-db.js — manages the users collection in localStorage
+// Only server-layer modules should call this directly
 
 const AuthDB = (function () {
 
-    // The key used to store the users array in localStorage
     const DB_KEY = "contacthub_users_db";
 
-    // ----------------------------------------------------------
-    // INIT — Create the database if it does not exist yet
-    // ----------------------------------------------------------
+    // Create the database if it doesn't exist yet
     function init() {
         if (!localStorage.getItem(DB_KEY)) {
             localStorage.setItem(DB_KEY, JSON.stringify([]));
@@ -27,44 +13,29 @@ const AuthDB = (function () {
         }
     }
 
-    // ----------------------------------------------------------
-    // Internal helpers (private)
-    // ----------------------------------------------------------
-
-    /** Read and parse the full users array from localStorage */
+    // Read all users from localStorage
     function _readAll() {
         const data = localStorage.getItem(DB_KEY);
         return data ? JSON.parse(data) : [];
     }
 
-    /** Serialize and write the users array back to localStorage */
+    // Write users array back to localStorage
     function _writeAll(users) {
         localStorage.setItem(DB_KEY, JSON.stringify(users));
     }
 
-    /** Generate a unique user ID (e.g. "u_1700000000000_ab3f2") */
+    // Generate a unique user ID
     function _generateId() {
         return "u_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5);
     }
 
-    // ----------------------------------------------------------
-    // PUBLIC API
-    // ----------------------------------------------------------
-
-    /**
-     * Find a user record by username.
-     * @returns {object|null} The user object, or null if not found.
-     */
+    // Find a user by username, returns null if not found
     function findByUsername(username) {
         const users = _readAll();
         return users.find(u => u.username === username) || null;
     }
 
-    /**
-     * Add a new user to the database.
-     * @param {object} userData - { username, password, fullName, email }
-     * @returns {{ success: boolean, user?: object, error?: string }}
-     */
+    // Add a new user to the database
     function addUser(userData) {
         const users = _readAll();
 
@@ -76,7 +47,7 @@ const AuthDB = (function () {
         const newUser = {
             id: _generateId(),
             username: userData.username,
-            password: userData.password,   // NOTE: In a real app, always hash passwords!
+            password: userData.password,   // NOTE: hash passwords in a real app
             fullName: userData.fullName,
             email: userData.email,
             createdAt: new Date().toISOString()
@@ -86,15 +57,12 @@ const AuthDB = (function () {
         _writeAll(users);
         console.log("[AuthDB] User added:", newUser.username);
 
-        // Return the user record without the password
+        // Return the user without exposing the password
         const { password, ...safeUser } = newUser;
         return { success: true, user: safeUser };
     }
 
-    /**
-     * Validate a username + password combination.
-     * @returns {{ success: boolean, user?: object, error?: string }}
-     */
+    // Check if a username + password combination is valid
     function validateCredentials(username, password) {
         const user = findByUsername(username);
 
@@ -105,7 +73,7 @@ const AuthDB = (function () {
             return { success: false, error: "WRONG_PASSWORD" };
         }
 
-        // Return the user record without the password
+        // Return the user without exposing the password
         const { password: pwd, ...safeUser } = user;
         return { success: true, user: safeUser };
     }

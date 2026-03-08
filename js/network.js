@@ -1,77 +1,40 @@
-// ============================================================
-// NETWORK.js — Network Simulation Layer
-// ============================================================
-// This module simulates a real-world network between the client
-// (FAJAX) and the servers (AuthServer, DataServer).
+// network.js — simulates a real-world network between client and servers
+// Adds random latency and packet loss to every request and response
 //
-// It introduces two key behaviours:
-//
-//   1. RANDOM LATENCY
-//      Every message (request AND response) is delayed by a
-//      random amount between MIN_DELAY and MAX_DELAY milliseconds.
-//      This forces the client to handle asynchronous responses
-//      instead of relying on immediate, synchronous results.
-//
-//   2. PACKET LOSS (Drop Rate)
-//      Each packet has a configurable probability of being
-//      silently "dropped" — the message simply never arrives.
-//      The drop rate can be set between 10% and 50% via the
-//      slider in the UI. When a packet is dropped, no error is
-//      returned; the FAJAX timeout handler takes care of it.
-//
-// How a request travels through this module:
-//   Client (FAJAX) → Network.send() → [delay + drop?] → Server
-//                                                         ↓
-//   Client (FAJAX._receiveResponse) ← [delay + drop?] ← response
-//
-// Public API:
-//   Network.send(message, fajaxObj)   → Send a request packet
-//   Network.setDropRate(rate)         → Set drop probability (0.1–0.5)
-//   Network.getDropRate()             → Get current drop probability
-//   Network.getStats()                → Get { totalSent, totalDropped, totalDelivered }
-// ============================================================
+// Flow: Client (FAJAX) → Network.send() → [delay + drop?] → Server
+//                                                              ↓
+//       Client (FAJAX._receiveResponse) ← [delay + drop?] ← response
 
 const Network = (function () {
 
-    // ----------------------------------------------------------
-    // Configuration
-    // ----------------------------------------------------------
-    let dropRate = 0.15;  // 15% packet loss by default (range: 0.10 – 0.50)
-    const MIN_DELAY_MS = 1000;  // Minimum one-way network delay (1 second)
-    const MAX_DELAY_MS = 3000;  // Maximum one-way network delay (3 seconds)
+    let dropRate = 0.15; // 15% packet loss by default (range: 0.10 – 0.50)
+    const MIN_DELAY_MS = 1000; // minimum one-way delay (ms)
+    const MAX_DELAY_MS = 3000; // maximum one-way delay (ms)
 
-    // ----------------------------------------------------------
     // Routing table — maps server names to server objects
-    // ----------------------------------------------------------
     const servers = {
         "auth-server": AuthServer,
         "data-server": DataServer
     };
 
-    // ----------------------------------------------------------
     // Real-time statistics
-    // ----------------------------------------------------------
     let stats = {
         totalSent: 0,
         totalDropped: 0,
         totalDelivered: 0
     };
 
-    // ----------------------------------------------------------
-    // Internal helpers (private)
-    // ----------------------------------------------------------
-
-    /** Return a random delay in ms between MIN_DELAY_MS and MAX_DELAY_MS */
+    // Return a random delay between MIN_DELAY_MS and MAX_DELAY_MS
     function _randomDelay() {
         return Math.floor(Math.random() * (MAX_DELAY_MS - MIN_DELAY_MS + 1)) + MIN_DELAY_MS;
     }
 
-    /** Return true if this packet should be dropped, based on dropRate */
+    // Return true if this packet should be dropped
     function _shouldDrop() {
         return Math.random() < dropRate;
     }
 
-    /** Update the network stats panel in the DOM (if it exists) */
+    // Update the network stats panel in the DOM
     function _updateUI() {
         const el = document.getElementById("network-stats");
         if (el) {
@@ -84,22 +47,7 @@ const Network = (function () {
         }
     }
 
-    // ----------------------------------------------------------
-    // PUBLIC API
-    // ----------------------------------------------------------
-
-    /**
-     * Send a request packet from the client to a server.
-     *
-     * @param {object} message - {
-     *   to:      "auth-server" | "data-server",
-     *   method:  HTTP method string,
-     *   url:     path string,
-     *   headers: key-value object,
-     *   body:    JSON string or null
-     * }
-     * @param {FXMLHttpRequest} fajaxObj - The FAJAX object waiting for the response.
-     */
+    // Send a request packet from the client to a server
     function send(message, fajaxObj) {
         stats.totalSent++;
         const msgId = stats.totalSent;
@@ -111,26 +59,25 @@ const Network = (function () {
 
         const requestDelay = _randomDelay();
 
-        // ── Check if the REQUEST packet is dropped ────────────
+        // Check if the request packet is dropped
         if (_shouldDrop()) {
             stats.totalDropped++;
             console.log(
                 `[Network] ❌ Packet #${msgId} DROPPED before reaching server.` +
                 ` (delay would have been ${requestDelay}ms, drop rate: ${(dropRate * 100).toFixed(0)}%)`
             );
-            // Packet is silently lost — FAJAX timeout will fire eventually.
+            // Packet is silently lost — FAJAX timeout will fire eventually
             _updateUI();
             return;
         }
 
-        // ── Simulate request travel time ──────────────────────
+        // Simulate request travel time
         setTimeout(function () {
             console.log(
                 `[Network] 📨 Packet #${msgId} arrived at ${message.to}` +
                 ` after ${requestDelay}ms`
             );
 
-            // Locate the target server
             const server = servers[message.to];
             if (!server) {
                 console.error("[Network] Unknown server:", message.to);
@@ -147,7 +94,7 @@ const Network = (function () {
 
             const responseDelay = _randomDelay();
 
-            // ── Check if the RESPONSE packet is dropped ───────
+            // Check if the response packet is dropped
             if (_shouldDrop()) {
                 stats.totalDropped++;
                 console.log(
@@ -158,7 +105,7 @@ const Network = (function () {
                 return;
             }
 
-            // ── Simulate response travel time ─────────────────
+            // Simulate response travel time
             setTimeout(function () {
                 stats.totalDelivered++;
                 console.log(
@@ -166,7 +113,6 @@ const Network = (function () {
                     ` (status: ${response.status}, delay: ${responseDelay}ms)`
                 );
 
-                // Hand the response back to the FAJAX object
                 fajaxObj._receiveResponse(response);
                 _updateUI();
 
@@ -177,23 +123,19 @@ const Network = (function () {
         _updateUI();
     }
 
-    /**
-     * Set the packet drop probability.
-     * Clamped to the allowed range [0.10, 0.50].
-     * @param {number} rate - A value between 0.10 and 0.50.
-     */
+    // Set the packet drop probability, clamped to [0.10, 0.50]
     function setDropRate(rate) {
         dropRate = Math.max(0.10, Math.min(0.50, rate));
         console.log(`[Network] Drop rate set to ${(dropRate * 100).toFixed(0)}%`);
         _updateUI();
     }
 
-    /** Return the current drop probability */
+    // Return the current drop probability
     function getDropRate() {
         return dropRate;
     }
 
-    /** Return a snapshot of the current network statistics */
+    // Return a snapshot of the current network statistics
     function getStats() {
         return { ...stats };
     }

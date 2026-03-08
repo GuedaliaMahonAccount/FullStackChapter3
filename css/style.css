@@ -1,16 +1,7 @@
-/* ============================================================
-   STYLE.CSS — ContactHub Application Styles
-   RETRO TERMINAL AESTHETIC — CRT Monitor Design
-   ============================================================
-   Inspired by vintage computer terminals, CRT monitors,
-   and classic hacker interfaces. Green phosphor on dark,
-   scanlines, glow effects, and monospace typography.
-   ============================================================ */
+/* style.css — ContactHub application styles (retro CRT terminal theme) */
 
 
-/* ============================================================
-   1. CSS VARIABLES — Terminal Color Palette
-   ============================================================ */
+/* 1. CSS variables — terminal color palette */
 :root {
     /* CRT Terminal Colors */
     --crt-black:       #0a0e27;
@@ -52,9 +43,7 @@
 }
 
 
-/* ============================================================
-   2. RESET & BASE
-   ============================================================ */
+/* 2. Reset & base */
 *, *::before, *::after {
     margin:     0;
     padding:    0;
@@ -112,9 +101,7 @@ body::after {
 }
 
 
-/* ============================================================
-   3. SPA PAGE SYSTEM
-   ============================================================ */
+/* 3. SPA page system */
 .page {
     display: none;
 }
@@ -123,9 +110,7 @@ body::after {
 }
 
 
-/* ============================================================
-   4. AUTH PAGES — Login & Register
-   ============================================================ */
+/* 4. Auth pages — login & register */
 
 .auth-page {
     justify-content: center;
@@ -391,16 +376,14 @@ body::after {
 }
 
 
-/* ============================================================
-   5. APP PAGE — Main Dashboard
-   ============================================================ */
+/* 5. App page — main dashboard */
 .app-page {
     flex-direction: column;
     min-height:     100vh;
 }
 
 
-/* ── 5a. Header ─────────────────────────────────────────── */
+/* 5a. Header */
 .app-header {
     background:     var(--crt-dark);
     padding:        16px 24px;
@@ -476,7 +459,7 @@ body::after {
 }
 
 
-/* ── 5b. Toolbar (Search + Add) ─────────────────────────── */
+/* 5b. Toolbar (search + add) */
 .app-toolbar {
     background:     var(--crt-dark);
     padding:        14px 24px;
@@ -559,7 +542,7 @@ body::after {
 }
 
 
-/* ── 5c. Status Bar ─────────────────────────────────────── */
+/* 5c. Status bar */
 .app-status {
     text-align:     center;
     padding:        8px;
@@ -572,7 +555,7 @@ body::after {
 }
 
 
-/* ── 5d. Contact Cards ──────────────────────────────────── */
+/* 5d. Contact cards */
 .contacts-container {
     padding:        24px;
     max-width:      900px;
@@ -701,7 +684,7 @@ body::after {
 }
 
 
-/* ── 5e. Empty State ────────────────────────────────────── */
+/* 5e. Empty state */
 .empty-state {
     text-align:  center;
     padding:     80px 20px;
@@ -728,7 +711,7 @@ body::after {
 }
 
 
-/* ── 5f. Contact Form Section ───────────────────────────── */
+/* 5f. Contact form section */
 .form-section {
     background:    var(--crt-darker);
     border:        2px solid var(--amber);
@@ -778,10 +761,7 @@ body::after {
 }
 
 
-/* ============================================================
-   6. NETWORK MONITOR PANEL
-   Terminal-style network monitoring dashboard at the bottom
-   ============================================================ */
+/* 6. Network monitor panel */
 .network-panel {
     background:   var(--crt-dark);
     color:        var(--text-primary);
@@ -869,9 +849,7 @@ body::after {
 }
 
 
-/* ============================================================
-   7. ANIMATIONS & MICRO-INTERACTIONS
-   ============================================================ */
+/* 7. Animations & micro-interactions */
 
 /* Fade-in animation for contact cards */
 @keyframes fadeInUp {
@@ -896,9 +874,7 @@ body::after {
 }
 
 
-/* ============================================================
-   8. RESPONSIVE — Mobile (≤ 600px)
-   ============================================================ */
+/* 8. Responsive — mobile (≤ 600px) */
 @media (max-width: 600px) {
     /* Stack form rows vertically */
     .form-row {
@@ -961,9 +937,7 @@ body::after {
 }
 
 
-/* ============================================================
-   9. UTILITY CLASSES
-   ============================================================ */
+/* 9. Utility classes */
 .hidden {
     display: none !important;
 }

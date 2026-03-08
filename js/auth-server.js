@@ -1,36 +1,18 @@
-// ============================================================
-// AUTH-SERVER.js — Authentication Server (Server Layer)
-// ============================================================
-// This logical server handles all authentication-related requests:
-//   POST /auth/login    → Validate credentials and issue a session token
-//   POST /auth/register → Create a new user account
-//   POST /auth/logout   → Invalidate the session token
-//   GET  /auth/validate → Verify a token (used internally by DataServer)
-//
-// The Network module calls handleRequest() and passes the response
-// back to the client through FAJAX. Sessions are stored in memory
-// (not in localStorage), so they reset on page reload — intentional.
-//
-// IMPORTANT: This server only reads/writes data via AuthDB. It never
-//            touches localStorage directly.
-// ============================================================
+// auth-server.js — handles all authentication requests
+// Routes: POST /auth/login, POST /auth/register, POST /auth/logout, GET /auth/validate
 
 const AuthServer = (function () {
 
     // In-memory session store: token → { userId, username, createdAt }
-    // This is intentionally NOT persisted; sessions are cleared on reload.
+    // Not persisted — sessions reset on page reload (intentional)
     const sessions = {};
 
-    // ----------------------------------------------------------
-    // Internal helpers (private)
-    // ----------------------------------------------------------
-
-    /** Generate a unique session token */
+    // Generate a unique session token
     function _generateToken() {
         return "tok_" + Date.now() + "_" + Math.random().toString(36).substr(2, 12);
     }
 
-    /** Parse a JSON request body (handles both string and object inputs) */
+    // Parse a JSON request body (handles both string and object inputs)
     function _parseBody(body) {
         if (!body) return null;
         if (typeof body === "object") return body;
@@ -38,7 +20,7 @@ const AuthServer = (function () {
         catch (e) { return null; }
     }
 
-    /** Extract the Bearer token from the Authorization header */
+    // Extract the Bearer token from the Authorization header
     function _extractToken(headers) {
         if (!headers) return null;
         const auth = headers["Authorization"] || headers["authorization"];
@@ -46,7 +28,7 @@ const AuthServer = (function () {
         return auth.startsWith("Bearer ") ? auth.substring(7) : auth;
     }
 
-    /** Build a standard HTTP-like response object */
+    // Build a standard HTTP-like response object
     function _response(status, statusText, body) {
         return {
             status: status,
@@ -54,10 +36,6 @@ const AuthServer = (function () {
             body: JSON.stringify(body)
         };
     }
-
-    // ----------------------------------------------------------
-    // Route handlers (private)
-    // ----------------------------------------------------------
 
     function _handleLogin(request) {
         const body = _parseBody(request.body);
@@ -155,15 +133,7 @@ const AuthServer = (function () {
         });
     }
 
-    // ----------------------------------------------------------
-    // PUBLIC — Entry point called by the Network module
-    // ----------------------------------------------------------
-
-    /**
-     * Route an incoming request to the correct handler.
-     * @param {object} request - { method, url, headers, body }
-     * @returns {object} response - { status, statusText, body }
-     */
+    // Route an incoming request to the correct handler
     function handleRequest(request) {
         console.log("[AuthServer] Request received:", request.method, request.url);
 
@@ -178,10 +148,7 @@ const AuthServer = (function () {
         return _response(404, "Not Found", { error: "ROUTE_NOT_FOUND" });
     }
 
-    /**
-     * Allow DataServer to validate a token directly (without going through the Network).
-     * Returns the session object { userId, username, createdAt } or null.
-     */
+    // Allow DataServer to validate a token directly (without going through the Network)
     function validateToken(token) {
         if (!token || !sessions[token]) return null;
         return sessions[token];
