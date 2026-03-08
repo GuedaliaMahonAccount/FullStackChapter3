@@ -440,10 +440,27 @@ const App = (function () {
         }
     }
 
+    // Update the network stats panel in the DOM
+    function updateNetworkUI(stats, dropRate) {
+        const el = document.getElementById("network-stats");
+        if (el) {
+            el.innerHTML =
+                `📡 Network — ` +
+                `Sent: ${stats.totalSent} | ` +
+                `Delivered: ${stats.totalDelivered} | ` +
+                `Dropped: ${stats.totalDropped} | ` +
+                `Drop rate: ${(dropRate * 100).toFixed(0)}%`;
+        }
+    }
+
     // Wire up the network drop-rate slider
     function _setupNetworkSlider() {
         const slider = document.getElementById("drop-rate-slider");
         const label = document.getElementById("drop-rate-label");
+        
+        Network.onStatsChange(updateNetworkUI);
+        updateNetworkUI(Network.getStats(), Network.getDropRate());
+
         if (!slider) return;
 
         slider.value = Network.getDropRate() * 100;

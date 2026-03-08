@@ -34,16 +34,16 @@ const Network = (function () {
         return Math.random() < dropRate;
     }
 
-    // Update the network stats panel in the DOM
-    function _updateUI() {
-        const el = document.getElementById("network-stats");
-        if (el) {
-            el.innerHTML =
-                `📡 Network — ` +
-                `Sent: ${stats.totalSent} | ` +
-                `Delivered: ${stats.totalDelivered} | ` +
-                `Dropped: ${stats.totalDropped} | ` +
-                `Drop rate: ${(dropRate * 100).toFixed(0)}%`;
+    let statsChangeCallback = null;
+
+    function onStatsChange(callback) {
+        statsChangeCallback = callback;
+    }
+
+    // Notify listeners when stats or drop rate change
+    function _notifyChange() {
+        if (statsChangeCallback) {
+            statsChangeCallback(stats, dropRate);
         }
     }
 
@@ -67,7 +67,7 @@ const Network = (function () {
                 ` (delay would have been ${requestDelay}ms, drop rate: ${(dropRate * 100).toFixed(0)}%)`
             );
             // Packet is silently lost — FAJAX timeout will fire eventually
-            _updateUI();
+            _notifyChange();
             return;
         }
 
@@ -101,7 +101,7 @@ const Network = (function () {
                     `[Network] ❌ Response #${msgId} DROPPED on its way back to client.` +
                     ` (delay would have been ${responseDelay}ms)`
                 );
-                _updateUI();
+                _notifyChange();
                 return;
             }
 
@@ -114,20 +114,20 @@ const Network = (function () {
                 );
 
                 fajaxObj._receiveResponse(response);
-                _updateUI();
+                _notifyChange();
 
             }, responseDelay);
 
         }, requestDelay);
 
-        _updateUI();
+        _notifyChange();
     }
 
     // Set the packet drop probability, clamped to [0.10, 0.50]
     function setDropRate(rate) {
         dropRate = Math.max(0.10, Math.min(0.50, rate));
         console.log(`[Network] Drop rate set to ${(dropRate * 100).toFixed(0)}%`);
-        _updateUI();
+        _notifyChange();
     }
 
     // Return the current drop probability
@@ -145,7 +145,8 @@ const Network = (function () {
         send,
         setDropRate,
         getDropRate,
-        getStats
+        getStats,
+        onStatsChange
     };
 
 })();
