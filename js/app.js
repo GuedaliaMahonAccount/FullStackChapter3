@@ -1,58 +1,24 @@
-// ============================================================
-// APP.js — Client Application (Client Layer)
-// ============================================================
-// This is the top-level client module. It orchestrates the entire
-// SPA: login, registration, contact management, and the UI.
-//
-// KEY PRINCIPLES enforced in this module:
-//
-//   1. ALL server communication goes through fajaxRequest().
-//      No server or DB module is ever called directly from here.
-//
-//   2. Every async operation handles BOTH timeout and packet-drop
-//      errors (network failures from the Network simulation layer).
-//
-//   3. Race conditions are prevented:
-//      - Buttons are disabled while a request is in flight, so a
-//        double-click cannot fire two concurrent requests.
-//      - All contact mutations (add/edit/delete) reload the list
-//        from the server afterwards, ensuring the UI reflects the
-//        true server state regardless of response order.
-//
-//   4. Out-of-order responses: Only the most recent fajaxRequest()
-//      call's result is rendered. Stale responses from earlier
-//      (now-irrelevant) requests are discarded automatically because
-//      each new request overwrites the shared loading state.
-// ============================================================
+// app.js — main client module, orchestrates the entire SPA
 
 const App = (function () {
 
-    // ----------------------------------------------------------
     // Application state
-    // ----------------------------------------------------------
-    let authToken = null;  // Session token returned by AuthServer
-    let currentUser = null;  // User object { id, username, fullName, email }
-    let contacts = [];    // Currently loaded contact list
-    let editingContactId = null;  // ID of the contact being edited (null = add mode)
+    let authToken = null;        // session token from AuthServer
+    let currentUser = null;      // { id, username, fullName, email }
+    let contacts = [];           // currently loaded contact list
+    let editingContactId = null; // ID of the contact being edited (null = add mode)
 
-    // ============================================================
-    // INITIALIZATION
-    // ============================================================
     function init() {
         console.log("[App] 🚀 Initializing application...");
 
-        // Initialize both persistent databases
+        // Initialize both databases
         AuthDB.init();
         DataDB.init();
 
-        // Register a lifecycle callback so the contacts list is
-        // refreshed every time the user navigates to the app page.
+        // Reload contacts every time the user navigates to the app page
         Router.onNavigate("app", onAppPageLoad);
 
-        // Attach all DOM event listeners
         _bindEvents();
-
-        // Wire up the Network drop-rate slider in the monitor panel
         _setupNetworkSlider();
 
         // Start on the login page
@@ -61,62 +27,48 @@ const App = (function () {
         console.log("[App] ✅ Application ready.");
     }
 
-    // ============================================================
-    // EVENT BINDING
-    // ============================================================
     function _bindEvents() {
-        // Login form submission
         document.getElementById("login-form").addEventListener("submit", function (e) {
             e.preventDefault();
             handleLogin();
         });
 
-        // Register form submission
         document.getElementById("register-form").addEventListener("submit", function (e) {
             e.preventDefault();
             handleRegister();
         });
 
-        // Navigate to the Register page
         document.getElementById("go-to-register").addEventListener("click", function (e) {
             e.preventDefault();
             _clearMessages();
             Router.navigate("register");
         });
 
-        // Navigate to the Login page
         document.getElementById("go-to-login").addEventListener("click", function (e) {
             e.preventDefault();
             _clearMessages();
             Router.navigate("login");
         });
 
-        // Sign out button
         document.getElementById("btn-logout").addEventListener("click", handleLogout);
-
-        // Open the "Add Contact" form
         document.getElementById("btn-add-contact").addEventListener("click", showAddForm);
 
-        // Save contact (add or edit)
         document.getElementById("contact-form").addEventListener("submit", function (e) {
             e.preventDefault();
             handleSaveContact();
         });
 
-        // Cancel / close the contact form
         document.getElementById("btn-cancel-form").addEventListener("click", hideContactForm);
 
-        // Live search with debounce (400 ms) to avoid flooding the server
+        // Live search with 400ms debounce to avoid flooding the server
         document.getElementById("search-input").addEventListener(
             "input",
             _debounce(handleSearch, 400)
         );
     }
 
-    // ============================================================
     // AUTH — LOGIN
-    // ============================================================
-    async function handleLogin() {
+    function handleLogin() {
         const username = document.getElementById("login-username").value.trim();
         const password = document.getElementById("login-password").value;
 
@@ -128,41 +80,41 @@ const App = (function () {
         _showMessage("login-message", "⏳ Signing in...", "loading");
         _setButtonLoading("login-btn", true);
 
-        try {
-            const response = await fajaxRequest({
+        fajaxSend(
+            {
                 method: "POST",
                 url: "auth-server:/auth/login",
-                body: { username, password },
+                body: { username: username, password: password },
                 retries: 3
-            });
-
-            if (response.status === 200) {
-                authToken = response.data.token;
-                currentUser = response.data.user;
-                _showMessage("login-message", "✅ Signed in successfully!", "success");
-                setTimeout(() => Router.navigate("app"), 500);
-            } else {
+            },
+            function (status, data) {
+                _setButtonLoading("login-btn", false);
+                if (status === 200) {
+                    authToken = data.token;
+                    currentUser = data.user;
+                    _showMessage("login-message", "✅ Signed in successfully!", "success");
+                    setTimeout(function () { Router.navigate("app"); }, 500);
+                } else {
+                    _showMessage(
+                        "login-message",
+                        "❌ " + (data.message || "Login failed. Please try again."),
+                        "error"
+                    );
+                }
+            },
+            function (errorMessage) {
+                _setButtonLoading("login-btn", false);
                 _showMessage(
                     "login-message",
-                    "❌ " + (response.data.message || "Login failed. Please try again."),
+                    "⚠️ Network problem: " + errorMessage + ". Please retry.",
                     "error"
                 );
             }
-        } catch (err) {
-            _showMessage(
-                "login-message",
-                "⚠️ Network problem: " + err.message + ". Please retry.",
-                "error"
-            );
-        } finally {
-            _setButtonLoading("login-btn", false);
-        }
+        );
     }
 
-    // ============================================================
     // AUTH — REGISTER
-    // ============================================================
-    async function handleRegister() {
+    function handleRegister() {
         const username = document.getElementById("reg-username").value.trim();
         const password = document.getElementById("reg-password").value;
         const fullName = document.getElementById("reg-fullname").value.trim();
@@ -185,47 +137,46 @@ const App = (function () {
         _showMessage("reg-message", "⏳ Creating your account...", "loading");
         _setButtonLoading("reg-btn", true);
 
-        try {
-            const response = await fajaxRequest({
+        fajaxSend(
+            {
                 method: "POST",
                 url: "auth-server:/auth/register",
-                body: { username, password, fullName, email },
+                body: { username: username, password: password, fullName: fullName, email: email },
                 retries: 3
-            });
-
-            if (response.status === 201) {
-                _showMessage("reg-message", "✅ Account created! You can now sign in.", "success");
-                setTimeout(() => Router.navigate("login"), 1500);
-            } else {
-                _showMessage(
-                    "reg-message",
-                    "❌ " + (response.data.message || "Registration failed."),
-                    "error"
-                );
+            },
+            function (status, data) {
+                _setButtonLoading("reg-btn", false);
+                if (status === 201) {
+                    _showMessage("reg-message", "✅ Account created! You can now sign in.", "success");
+                    setTimeout(function () { Router.navigate("login"); }, 1500);
+                } else {
+                    _showMessage(
+                        "reg-message",
+                        "❌ " + (data.message || "Registration failed."),
+                        "error"
+                    );
+                }
+            },
+            function (errorMessage) {
+                _setButtonLoading("reg-btn", false);
+                _showMessage("reg-message", "⚠️ Network problem: " + errorMessage, "error");
             }
-        } catch (err) {
-            _showMessage("reg-message", "⚠️ Network problem: " + err.message, "error");
-        } finally {
-            _setButtonLoading("reg-btn", false);
-        }
+        );
     }
 
-    // ============================================================
     // AUTH — LOGOUT
-    // ============================================================
-    async function handleLogout() {
-        // Best-effort logout — we clear the client state regardless of
-        // whether the server request succeeds, since the token is in-memory.
-        try {
-            await fajaxRequest({
+    function handleLogout() {
+        // Best-effort: fire-and-forget — clear client state regardless of outcome
+        fajaxSend(
+            {
                 method: "POST",
                 url: "auth-server:/auth/logout",
                 headers: { "Authorization": "Bearer " + authToken },
                 retries: 1
-            });
-        } catch (e) {
-            // Ignored — client state is cleared regardless
-        }
+            },
+            function () { /* response ignored */ },
+            function () { /* error ignored */ }
+        );
 
         authToken = null;
         currentUser = null;
@@ -235,12 +186,9 @@ const App = (function () {
         Router.navigate("login");
     }
 
-    // ============================================================
-    // APP PAGE — on page load callback
-    // ============================================================
+    // Called every time the user navigates to the app page
     function onAppPageLoad() {
         if (!authToken) {
-            // No valid token → redirect to login
             Router.navigate("login");
             return;
         }
@@ -248,39 +196,36 @@ const App = (function () {
         loadContacts();
     }
 
-    // ============================================================
-    // CONTACTS — Load all (GET /api/contacts)
-    // ============================================================
-    async function loadContacts() {
+    // Load all contacts from the server
+    function loadContacts() {
         _showAppStatus("⏳ Loading contacts...");
 
-        try {
-            const response = await fajaxRequest({
+        fajaxSend(
+            {
                 method: "GET",
                 url: "data-server:/api/contacts",
                 headers: { "Authorization": "Bearer " + authToken },
                 retries: 3
-            });
-
-            if (response.status === 200) {
-                contacts = response.data.data;
-                _renderContacts(contacts);
-                _showAppStatus("");  // Clear the status bar on success
-            } else if (response.status === 401) {
-                // Session expired — auto sign out
-                _showAppStatus("⚠️ Session expired. Signing out...");
-                setTimeout(() => handleLogout(), 2000);
-            } else {
-                _showAppStatus("❌ Failed to load contacts. Please try again.");
+            },
+            function (status, data) {
+                if (status === 200) {
+                    contacts = data.data;
+                    _renderContacts(contacts);
+                    _showAppStatus("");
+                } else if (status === 401) {
+                    // Session expired — auto sign out
+                    _showAppStatus("⚠️ Session expired. Signing out...");
+                    setTimeout(function () { handleLogout(); }, 2000);
+                } else {
+                    _showAppStatus("❌ Failed to load contacts. Please try again.");
+                }
+            },
+            function (errorMessage) {
+                _showAppStatus("⚠️ Network problem: " + errorMessage);
             }
-        } catch (err) {
-            _showAppStatus("⚠️ Network problem: " + err.message);
-        }
+        );
     }
 
-    // ============================================================
-    // CONTACTS — Show / hide the Add form
-    // ============================================================
     function showAddForm() {
         editingContactId = null;
         document.getElementById("contact-form").reset();
@@ -301,7 +246,7 @@ const App = (function () {
         document.getElementById("cf-notes").value = contact.notes || "";
         document.getElementById("contact-form-section").classList.remove("hidden");
 
-        // Scroll the form into view smoothly
+        // Scroll the form into view
         document.getElementById("contact-form-section").scrollIntoView({ behavior: "smooth" });
     }
 
@@ -311,10 +256,8 @@ const App = (function () {
         editingContactId = null;
     }
 
-    // ============================================================
-    // CONTACTS — Save (POST / PUT)
-    // ============================================================
-    async function handleSaveContact() {
+    // Save contact (add or edit)
+    function handleSaveContact() {
         const contactData = {
             firstName: document.getElementById("cf-firstname").value.trim(),
             lastName: document.getElementById("cf-lastname").value.trim(),
@@ -336,58 +279,58 @@ const App = (function () {
 
         _showAppStatus(isEdit ? "⏳ Saving changes..." : "⏳ Adding contact...");
 
-        try {
-            const response = await fajaxRequest({
+        fajaxSend(
+            {
                 method: method,
                 url: url,
                 headers: { "Authorization": "Bearer " + authToken },
                 body: contactData,
                 retries: 3
-            });
-
-            if (response.status === 200 || response.status === 201) {
-                _showAppStatus(isEdit ? "✅ Contact updated!" : "✅ Contact added!");
-                hideContactForm();
-                loadContacts(); // Always reload from server to prevent stale state
-            } else {
-                _showAppStatus("❌ " + (response.data.message || "An error occurred."));
+            },
+            function (status, data) {
+                if (status === 200 || status === 201) {
+                    _showAppStatus(isEdit ? "✅ Contact updated!" : "✅ Contact added!");
+                    hideContactForm();
+                    loadContacts(); // Reload from server to avoid stale state
+                } else {
+                    _showAppStatus("❌ " + (data.message || "An error occurred."));
+                }
+            },
+            function (errorMessage) {
+                _showAppStatus("⚠️ Network problem: " + errorMessage);
             }
-        } catch (err) {
-            _showAppStatus("⚠️ Network problem: " + err.message);
-        }
+        );
     }
 
-    // ============================================================
-    // CONTACTS — Delete (DELETE /api/contacts/:id)
-    // ============================================================
-    async function handleDeleteContact(contactId) {
+    // Delete a contact by ID
+    function handleDeleteContact(contactId) {
         if (!confirm("Are you sure you want to delete this contact?")) return;
 
         _showAppStatus("⏳ Deleting...");
 
-        try {
-            const response = await fajaxRequest({
+        fajaxSend(
+            {
                 method: "DELETE",
                 url: `data-server:/api/contacts/${contactId}`,
                 headers: { "Authorization": "Bearer " + authToken },
                 retries: 3
-            });
-
-            if (response.status === 200) {
-                _showAppStatus("✅ Contact deleted.");
-                loadContacts();
-            } else {
-                _showAppStatus("❌ " + (response.data.message || "An error occurred."));
+            },
+            function (status, data) {
+                if (status === 200) {
+                    _showAppStatus("✅ Contact deleted.");
+                    loadContacts();
+                } else {
+                    _showAppStatus("❌ " + (data.message || "An error occurred."));
+                }
+            },
+            function (errorMessage) {
+                _showAppStatus("⚠️ Network problem: " + errorMessage);
             }
-        } catch (err) {
-            _showAppStatus("⚠️ Network problem: " + err.message);
-        }
+        );
     }
 
-    // ============================================================
-    // CONTACTS — Search (GET /api/contacts/search?q=...)
-    // ============================================================
-    async function handleSearch() {
+    // Search contacts
+    function handleSearch() {
         const query = document.getElementById("search-input").value.trim();
 
         if (!query) {
@@ -397,26 +340,26 @@ const App = (function () {
 
         _showAppStatus("🔍 Searching...");
 
-        try {
-            const response = await fajaxRequest({
+        fajaxSend(
+            {
                 method: "GET",
                 url: `data-server:/api/contacts/search?q=${encodeURIComponent(query)}`,
                 headers: { "Authorization": "Bearer " + authToken },
                 retries: 2
-            });
-
-            if (response.status === 200) {
-                _renderContacts(response.data.data);
-                _showAppStatus(`🔍 ${response.data.count} result(s) for "${query}"`);
+            },
+            function (status, data) {
+                if (status === 200) {
+                    _renderContacts(data.data);
+                    _showAppStatus(`🔍 ${data.count} result(s) for "${query}"`);
+                }
+            },
+            function () {
+                _showAppStatus("⚠️ Search failed. Please try again.");
             }
-        } catch (err) {
-            _showAppStatus("⚠️ Search failed. Please try again.");
-        }
+        );
     }
 
-    // ============================================================
-    // UI RENDERING
-    // ============================================================
+    // Render the contacts list into the DOM
     function _renderContacts(contactsList) {
         const container = document.getElementById("contacts-list");
 
@@ -457,18 +400,14 @@ const App = (function () {
         `).join("");
     }
 
-    // ============================================================
-    // UI HELPERS
-    // ============================================================
-
-    /** Show a message inside a message element */
+    // Show a status message inside a message element
     function _showMessage(elementId, text, type) {
         const el = document.getElementById(elementId);
         el.textContent = text;
         el.className = "message " + type;
     }
 
-    /** Clear all message elements on the page */
+    // Clear all message elements on the page
     function _clearMessages() {
         document.querySelectorAll(".message").forEach(el => {
             el.textContent = "";
@@ -476,10 +415,7 @@ const App = (function () {
         });
     }
 
-    /**
-     * Update the app status bar and auto-clear it after 5 seconds.
-     * @param {string} text - Message to display (empty string = clear)
-     */
+    // Update the app status bar and auto-clear after 5 seconds
     function _showAppStatus(text) {
         const el = document.getElementById("app-status");
         el.textContent = text;
@@ -490,10 +426,7 @@ const App = (function () {
         }
     }
 
-    /**
-     * Disable or re-enable a button while a request is in flight.
-     * Prevents double-click race conditions.
-     */
+    // Disable or re-enable a button while a request is in flight
     function _setButtonLoading(btnId, loading) {
         const btn = document.getElementById(btnId);
         if (!btn) return;
@@ -507,7 +440,7 @@ const App = (function () {
         }
     }
 
-    /** Wire up the Network drop-rate slider in the monitor panel */
+    // Wire up the network drop-rate slider
     function _setupNetworkSlider() {
         const slider = document.getElementById("drop-rate-slider");
         const label = document.getElementById("drop-rate-label");
@@ -522,21 +455,14 @@ const App = (function () {
         });
     }
 
-    /**
-     * Escape a string for safe insertion into innerHTML.
-     * Prevents XSS from user-supplied contact data.
-     */
+    // Escape a string for safe insertion into innerHTML (prevents XSS)
     function _escapeHtml(text) {
         const div = document.createElement("div");
         div.textContent = text;
         return div.innerHTML;
     }
 
-    /**
-     * Returns a debounced version of func that fires only after
-     * 'wait' ms have elapsed since the last call.
-     * Used for the live search input.
-     */
+    // Returns a debounced version of func that fires after 'wait' ms
     function _debounce(func, wait) {
         let timeout;
         return function (...args) {
@@ -545,10 +471,7 @@ const App = (function () {
         };
     }
 
-    // ----------------------------------------------------------
-    // Public API — only expose methods needed by the HTML
-    // (edit/delete buttons use onclick="App.xxx()").
-    // ----------------------------------------------------------
+    // Expose only the methods needed by the HTML (onclick attributes)
     return {
         init,
         showEditForm,
@@ -557,6 +480,5 @@ const App = (function () {
 
 })();
 
-// ── Bootstrap ───────────────────────────────────────────────────
-// Start the app as soon as the DOM is fully parsed.
+// Start the app once the DOM is ready
 document.addEventListener("DOMContentLoaded", App.init);
